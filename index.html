@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Währungsrechner</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+
+/* ═══════════════════════════════════════════════════════════════
+   G-DESIGN — Template v1.1
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tokens ─────────────────────────────────────────────────── */
+:root,[data-theme="dark"]{
+  --bg:        #0c1410;
+  --surface:   #13201a;
+  --surface2:  #192b22;
+  --border:    #213328;
+  --accent:    #5d9e7a;
+  --accent-lt: #89c4a2;
+  --accent-dim:rgba(93,158,122,0.13);
+  --text:      #ddeee5;
+  --text-muted:#6e9480;
+}
+[data-theme="light"]{
+  --bg:        #f0f7f3;
+  --surface:   #ffffff;
+  --surface2:  #e6f2eb;
+  --border:    #bdd8c8;
+  --accent:    #2e7a50;
+  --accent-lt: #1e5c3a;
+  --accent-dim:rgba(46,122,80,0.10);
+  --text:      #0f1f16;
+  --text-muted:#4d7a5e;
+}
+@media(prefers-color-scheme:light){
+  :root:not([data-theme]){
+    --bg:#f0f7f3;--surface:#ffffff;--surface2:#e6f2eb;--border:#bdd8c8;
+    --accent:#2e7a50;--accent-lt:#1e5c3a;--accent-dim:rgba(46,122,80,0.10);
+    --text:#0f1f16;--text-muted:#4d7a5e;
+  }
+}
+
+/* ── Reset ──────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;}
+
+/* ── Body & Hintergrund-Grid ────────────────────────────────── */
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'IBM Plex Sans',sans-serif;font-weight:300;
+  min-height:100vh;padding:40px 20px 80px;
+  transition:background .25s,color .25s;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(93,158,122,0.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(93,158,122,0.04) 1px,transparent 1px);
+  background-size:40px 40px;
+}
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.container{max-width:960px;margin:0 auto;position:relative;z-index:1;}
+
+/* ── Theme-Toggle ───────────────────────────────────────────── */
+.theme-toggle{
+  position:fixed;top:18px;right:20px;display:flex;gap:3px;
+  z-index:1000;background:var(--surface);border:1px solid var(--border);padding:4px;
+}
+.theme-btn{
+  width:28px;height:28px;background:transparent;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-muted);transition:all .2s;padding:0;
+}
+.theme-btn:hover{color:var(--accent);}
+.theme-btn.active{color:var(--accent);background:var(--accent-dim);}
+.theme-btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+/* ── Typografie ─────────────────────────────────────────────── */
+h1{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(26px,5vw,44px);font-weight:600;
+  line-height:1.15;color:var(--text);margin-bottom:10px;
+}
+h1 span{color:var(--accent);}
+h2{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(18px,3vw,26px);font-weight:600;
+  color:var(--text);margin-bottom:8px;
+}
+.subtitle{
+  font-size:12px;color:var(--text-muted);
+  font-family:'IBM Plex Mono',monospace;letter-spacing:0.5px;
+}
+.badge{
+  display:inline-block;font-family:'IBM Plex Mono',monospace;
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--accent);border:1px solid var(--accent-dim);padding:4px 14px;margin-bottom:18px;
+}
+.card-title{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:18px;
+}
+.hint{font-size:10px;color:var(--text-muted);margin-top:5px;font-family:'IBM Plex Mono',monospace;line-height:1.5;}
+.hint b{color:var(--accent-lt);}
+.note{font-size:10px;color:var(--text-muted);margin-top:14px;line-height:1.7;font-family:'IBM Plex Mono',monospace;}
+
+/* ── Disclaimer ─────────────────────────────────────────────── */
+.disclaimer{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--text-muted);line-height:1.7;opacity:.7;
+  margin-top:32px;
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+footer{
+  text-align:center;padding:32px 0 0;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  letter-spacing:1px;color:var(--text-muted);opacity:.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ENDE G-DESIGN — App-spezifisches CSS
+   ═══════════════════════════════════════════════════════════════ */
+
+label span.lbl{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:6px;
+}
+input[type="text"], select{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:14px;
+  padding:10px 14px;outline:none;transition:border-color .2s;
+}
+input[type="text"]:focus, select:focus{border-color:var(--accent);}
+select{cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235d9e7a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:600px){.grid2{grid-template-columns:1fr;}}
+
+.card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);padding:28px 32px;margin-bottom:20px;}
+
+.swap-btn{
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent-dim);border:1px solid var(--accent);
+  width:44px;height:44px;cursor:pointer;color:var(--accent);
+  font-size:18px;transition:background .2s;margin:0 auto;
+  flex-shrink:0;
+}
+.swap-btn:hover{background:var(--accent);color:#fff;}
+
+.calc-btn{
+  width:100%;padding:14px;background:var(--accent);color:#fff;
+  border:none;font-family:'IBM Plex Mono',monospace;font-size:11px;
+  letter-spacing:3px;text-transform:uppercase;cursor:pointer;
+  transition:opacity .2s;margin-top:20px;
+}
+.calc-btn:hover{opacity:.85;}
+
+.result-box{
+  background:var(--accent-dim);border:1px solid var(--accent);
+  border-left:3px solid var(--accent);padding:24px 28px;margin-top:24px;
+}
+.result-big{
+  font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,40px);
+  color:var(--accent);line-height:1.2;margin:8px 0 4px;
+}
+.result-sub{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  color:var(--text-muted);margin-top:8px;
+}
+.rate-info{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--text-muted);margin-top:4px;
+}
+
+.status-bar{
+  display:flex;align-items:center;gap:8px;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--text-muted);margin-bottom:20px;
+}
+.status-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--text-muted);flex-shrink:0;
+}
+.status-dot.live{background:#5d9e7a;}
+.status-dot.error{background:#c0392b;}
+.status-dot.loading{background:#f39c12;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+.quick-grid{
+  display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;
+}
+.quick-btn{
+  background:var(--surface2);border:1px solid var(--border);
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  color:var(--text-muted);padding:6px 14px;cursor:pointer;
+  transition:all .2s;
+}
+.quick-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+.rates-table{
+  width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;
+}
+.rates-table th{
+  text-align:left;font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--text-muted);padding:8px 0;border-bottom:1px solid var(--border);
+}
+.rates-table td{
+  padding:10px 0;border-bottom:1px solid var(--border);color:var(--text);
+}
+.rates-table td:last-child{text-align:right;color:var(--accent);}
+.rates-table tr:last-child td{border-bottom:none;}
+.rates-table .flag{margin-right:8px;}
+
+.converter-row{
+  display:grid;grid-template-columns:1fr 44px 1fr;gap:12px;align-items:end;
+}
+@media(max-width:600px){
+  .converter-row{grid-template-columns:1fr;gap:12px;}
+  .swap-btn{transform:rotate(90deg);}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Theme-Toggle ──────────────────────────────────────────── -->
+<div class="theme-toggle">
+  <button class="theme-btn" id="btn-dark" onclick="setTheme('dark')" title="Dunkel">
+    <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+  <button class="theme-btn" id="btn-system" onclick="setTheme('system')" title="System">
+    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+  </button>
+  <button class="theme-btn" id="btn-light" onclick="setTheme('light')" title="Hell">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  </button>
+</div>
+
+<div class="container">
+
+  <header style="text-align:center;margin-bottom:40px;">
+    <h1><span>Währungs</span>rechner</h1>
+    <p class="subtitle">Live-Kurse · ECB · Täglich aktualisiert</p>
+  </header>
+
+  <!-- Kursstatus -->
+  <div class="status-bar">
+    <div class="status-dot loading" id="status-dot"></div>
+    <span id="status-text">Kurse werden geladen …</span>
+  </div>
+
+  <!-- Hauptrechner -->
+  <div class="card">
+    <div class="card-title">Umrechner</div>
+
+    <div class="converter-row">
+      <div>
+        <label>
+          <span class="lbl">Betrag</span>
+          <input type="text" id="amount-in" value="1.000" oninput="onAmountInput()" onblur="formatAmountBlur()" onfocus="formatAmountFocus()">
+        </label>
+        <label style="margin-top:12px;display:block;">
+          <span class="lbl">Von</span>
+          <select id="from-cur" onchange="convert()"></select>
+        </label>
+      </div>
+
+      <div style="padding-bottom:12px;">
+        <button class="swap-btn" onclick="swapCurrencies()" title="Tauschen">⇄</button>
+      </div>
+
+      <div>
+        <label>
+          <span class="lbl">Ergebnis</span>
+          <input type="text" id="amount-out" readonly style="background:var(--surface);cursor:default;color:var(--accent);">
+        </label>
+        <label style="margin-top:12px;display:block;">
+          <span class="lbl">Nach</span>
+          <select id="to-cur" onchange="convert()"></select>
+        </label>
+      </div>
+    </div>
+
+    <div id="result-detail" style="display:none;" class="result-box" style="margin-top:20px;">
+      <div class="card-title">Kursdetail</div>
+      <div id="rate-line" class="rate-info"></div>
+      <div id="rate-inverse" class="rate-info" style="margin-top:4px;"></div>
+    </div>
+
+    <!-- Schnellbeträge -->
+    <div style="margin-top:20px;">
+      <span class="lbl" style="display:inline-block;margin-bottom:0;">Schnellauswahl</span>
+      <div class="quick-grid">
+        <button class="quick-btn" onclick="setAmount(100)">100</button>
+        <button class="quick-btn" onclick="setAmount(500)">500</button>
+        <button class="quick-btn" onclick="setAmount(1000)">1.000</button>
+        <button class="quick-btn" onclick="setAmount(5000)">5.000</button>
+        <button class="quick-btn" onclick="setAmount(10000)">10.000</button>
+        <button class="quick-btn" onclick="setAmount(50000)">50.000</button>
+        <button class="quick-btn" onclick="setAmount(100000)">100.000</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kurstabelle -->
+  <div class="card">
+    <div class="card-title">Referenzkurse <span style="font-size:9px;color:var(--text-muted);">gegenüber EUR</span></div>
+    <div id="rates-container">
+      <table class="rates-table">
+        <thead>
+          <tr>
+            <th>Währung</th>
+            <th>Code</th>
+            <th style="text-align:right;">Kurs</th>
+          </tr>
+        </thead>
+        <tbody id="rates-body">
+          <tr><td colspan="3" style="color:var(--text-muted);padding:20px 0;">Wird geladen …</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Kurse: Europäische Zentralbank (EZB) · Referenzkurse gegen EUR · Täglich ~16:00 Uhr MEZ</p>
+  </div>
+
+  <p class="disclaimer">Alle Wechselkurse basieren auf den täglich veröffentlichten Referenzkursen der Europäischen Zentralbank (EZB). Die Kurse dienen zur Orientierung und können von Handels- oder Bankenkursen abweichen. Alle Angaben ohne Gewähr.</p>
+
+</div>
+
+<footer>© Robin Glowania</footer>
+
+<script>
+/* ─── Theme ─────────────────────────────────────────────────── */
+function setTheme(t) {
+  if (t === 'system') {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', t);
+  }
+  try { localStorage.setItem('g-theme', t); } catch(e){}
+  document.querySelectorAll('.theme-btn').forEach(function(b){ b.classList.remove('active'); });
+  var btn = document.getElementById('btn-' + t);
+  if (btn) btn.classList.add('active');
+}
+(function(){
+  var saved = 'system';
+  try { saved = localStorage.getItem('g-theme') || 'system'; } catch(e){}
+  setTheme(saved);
+})();
+
+/* ─── Währungsdaten ─────────────────────────────────────────── */
+const CURRENCY_META = {
+  EUR:{name:'Euro',flag:'🇪🇺'},
+  USD:{name:'US-Dollar',flag:'🇺🇸'},
+  CHF:{name:'Schweizer Franken',flag:'🇨🇭'},
+  GBP:{name:'Britisches Pfund',flag:'🇬🇧'},
+  JPY:{name:'Japanischer Yen',flag:'🇯🇵'},
+  CNY:{name:'Chinesischer Renminbi',flag:'🇨🇳'},
+  CAD:{name:'Kanadischer Dollar',flag:'🇨🇦'},
+  AUD:{name:'Australischer Dollar',flag:'🇦🇺'},
+  SEK:{name:'Schwedische Krone',flag:'🇸🇪'},
+  NOK:{name:'Norwegische Krone',flag:'🇳🇴'},
+  DKK:{name:'Dänische Krone',flag:'🇩🇰'},
+  CZK:{name:'Tschechische Krone',flag:'🇨🇿'},
+  PLN:{name:'Polnischer Złoty',flag:'🇵🇱'},
+  HUF:{name:'Ungarischer Forint',flag:'🇭🇺'},
+  RON:{name:'Rumänischer Leu',flag:'🇷🇴'},
+  BGN:{name:'Bulgarischer Lew',flag:'🇧🇬'},
+  HRK:{name:'Kroatische Kuna',flag:'🇭🇷'},
+  TRY:{name:'Türkische Lira',flag:'🇹🇷'},
+  RUB:{name:'Russischer Rubel',flag:'🇷🇺'},
+  BRL:{name:'Brasilianischer Real',flag:'🇧🇷'},
+  MXN:{name:'Mexikanischer Peso',flag:'🇲🇽'},
+  INR:{name:'Indische Rupie',flag:'🇮🇳'},
+  KRW:{name:'Südkoreanischer Won',flag:'🇰🇷'},
+  SGD:{name:'Singapur-Dollar',flag:'🇸🇬'},
+  HKD:{name:'Hongkong-Dollar',flag:'🇭🇰'},
+  NZD:{name:'Neuseeländischer Dollar',flag:'🇳🇿'},
+  ZAR:{name:'Südafrikanischer Rand',flag:'🇿🇦'},
+  IDR:{name:'Indonesische Rupiah',flag:'🇮🇩'},
+  MYR:{name:'Malaysischer Ringgit',flag:'🇲🇾'},
+  PHP:{name:'Philippinischer Peso',flag:'🇵🇭'},
+  THB:{name:'Thaibaht',flag:'🇹🇭'},
+  ILS:{name:'Israelischer Schekel',flag:'🇮🇱'},
+  AED:{name:'Dirham (VAE)',flag:'🇦🇪'},
+  SAR:{name:'Saudi-Riyal',flag:'🇸🇦'},
+};
+
+let rates = {}; // alle gegen EUR
+let rateDate = '';
+let rawAmount = 1000;
+
+/* ─── ECB-Kurse laden ───────────────────────────────────────── */
+async function loadRates() {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  dot.className = 'status-dot loading';
+  txt.textContent = 'Kurse werden geladen …';
+
+  // ECB XML via allorigins
+  const ecbUrl = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml';
+  const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(ecbUrl);
+
+  try {
+    const res = await fetch(proxy, {cache:'no-store'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const xml = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, 'application/xml');
+
+    // Datum
+    const cube0 = doc.querySelector('Cube[time]');
+    if (cube0) rateDate = cube0.getAttribute('time');
+
+    // Kurse (alle gegen EUR)
+    rates = {EUR: 1};
+    doc.querySelectorAll('Cube[currency]').forEach(c => {
+      const code = c.getAttribute('currency');
+      const rate = parseFloat(c.getAttribute('rate'));
+      if (code && !isNaN(rate)) rates[code] = rate;
+    });
+
+    dot.className = 'status-dot live';
+    txt.textContent = 'Live-Kurse · EZB · Stand: ' + rateDate;
+
+    buildSelects();
+    buildRatesTable();
+    convert();
+  } catch(e) {
+    dot.className = 'status-dot error';
+    txt.textContent = 'Kurse konnten nicht geladen werden – Fallback-Kurse aktiv';
+    // Fallback (approximativ, Stand 2025)
+    rates = {EUR:1,USD:1.082,CHF:0.940,GBP:0.855,JPY:162.4,CNY:7.84,CAD:1.497,AUD:1.672,
+             SEK:11.45,NOK:11.78,DKK:7.461,CZK:25.15,PLN:4.268,HUF:406.3,RON:4.977,
+             BGN:1.956,TRY:37.2,BRL:6.11,MXN:20.9,INR:92.5,KRW:1494,SGD:1.44,HKD:8.41,
+             NZD:1.84,ZAR:19.9,ILS:3.98,AED:3.974,SAR:4.058,THB:37.4,MYR:4.76,PHP:62.1,IDR:17320};
+    rateDate = 'Fallback';
+    buildSelects();
+    buildRatesTable();
+    convert();
+  }
+}
+
+/* ─── Selects befüllen ──────────────────────────────────────── */
+function buildSelects() {
+  const from = document.getElementById('from-cur');
+  const to   = document.getElementById('to-cur');
+  const preferred = ['EUR','USD','CHF','GBP','JPY','CNY','CAD','AUD','SEK','NOK','DKK','CZK','PLN','HUF'];
+  const allCodes = Object.keys(rates).sort((a,b) => {
+    const ia = preferred.indexOf(a), ib = preferred.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  [from, to].forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = '';
+    allCodes.forEach(code => {
+      const m = CURRENCY_META[code] || {name:code, flag:'🏳'};
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = m.flag + '  ' + code + ' – ' + m.name;
+      sel.appendChild(opt);
+    });
+    if (cur && rates[cur]) sel.value = cur;
+  });
+
+  from.value = 'EUR';
+  to.value   = 'CHF';
+}
+
+/* ─── Kurstabelle ───────────────────────────────────────────── */
+function buildRatesTable() {
+  const tbody = document.getElementById('rates-body');
+  const main = ['USD','CHF','GBP','JPY','CNY','CAD','AUD','SEK','NOK','DKK','CZK','PLN','HUF','TRY','BRL','INR','KRW','SGD','HKD','NZD','ZAR','ILS','AED','SAR','THB','MYR','PHP','IDR','RON','BGN','MXN'];
+  const show = main.filter(c => rates[c]);
+  tbody.innerHTML = show.map(code => {
+    const m = CURRENCY_META[code] || {name:code,flag:'🏳'};
+    const r = rates[code];
+    const dec = r < 10 ? 4 : r < 100 ? 3 : r < 10000 ? 2 : 0;
+    return `<tr>
+      <td><span class="flag">${m.flag}</span>${m.name}</td>
+      <td style="color:var(--text-muted)">${code}</td>
+      <td>${r.toLocaleString('de-DE',{minimumFractionDigits:dec,maximumFractionDigits:dec})}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ─── Umrechnung ────────────────────────────────────────────── */
+function convert() {
+  const from = document.getElementById('from-cur').value;
+  const to   = document.getElementById('to-cur').value;
+  if (!rates[from] || !rates[to]) return;
+
+  const rateFrom = rates[from]; // EUR→FROM
+  const rateTo   = rates[to];   // EUR→TO
+  const rateNet  = rateTo / rateFrom; // FROM→TO
+
+  const result = rawAmount * rateNet;
+
+  // Dezimalstellen dynamisch
+  const dec = result < 1 ? 5 : result < 100 ? 4 : 2;
+  document.getElementById('amount-out').value = result.toLocaleString('de-DE',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+
+  // Kursdetail
+  document.getElementById('result-detail').style.display = 'block';
+  const r1dec = rateNet < 1 ? 6 : rateNet < 100 ? 4 : 2;
+  const r2dec = (1/rateNet) < 1 ? 6 : (1/rateNet) < 100 ? 4 : 2;
+  document.getElementById('rate-line').textContent =
+    `1 ${from} = ${rateNet.toLocaleString('de-DE',{minimumFractionDigits:r1dec,maximumFractionDigits:r1dec})} ${to}`;
+  document.getElementById('rate-inverse').textContent =
+    `1 ${to} = ${(1/rateNet).toLocaleString('de-DE',{minimumFractionDigits:r2dec,maximumFractionDigits:r2dec})} ${from}`;
+}
+
+/* ─── Input-Formatierung ────────────────────────────────────── */
+function onAmountInput() {
+  const raw = document.getElementById('amount-in').value.replace(/\./g,'').replace(',','.');
+  const n = parseFloat(raw);
+  if (!isNaN(n)) { rawAmount = n; convert(); }
+}
+function formatAmountBlur() {
+  const el = document.getElementById('amount-in');
+  const raw = el.value.replace(/\./g,'').replace(',','.');
+  const n = parseFloat(raw);
+  if (!isNaN(n)) {
+    rawAmount = n;
+    el.value = n.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:2});
+    convert();
+  }
+}
+function formatAmountFocus() {
+  const el = document.getElementById('amount-in');
+  el.value = rawAmount.toString().replace('.',',');
+}
+
+function setAmount(n) {
+  rawAmount = n;
+  document.getElementById('amount-in').value = n.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0});
+  convert();
+}
+
+function swapCurrencies() {
+  const from = document.getElementById('from-cur');
+  const to   = document.getElementById('to-cur');
+  const tmp  = from.value;
+  from.value = to.value;
+  to.value   = tmp;
+  convert();
+}
+
+/* ─── Init ──────────────────────────────────────────────────── */
+loadRates();
+// Alle 30 Min automatisch aktualisieren
+setInterval(loadRates, 30 * 60 * 1000);
+</script>
+</body>
+</html>
