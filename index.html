@@ -222,6 +222,13 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;
   .converter-row{grid-template-columns:1fr;gap:12px;}
   .swap-btn{transform:rotate(90deg);}
 }
+
+.select-wrapper{position:relative;}
+.cur-flag{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  font-size:16px;pointer-events:none;z-index:1;line-height:1;
+}
+.select-wrapper select{padding-left:38px;}
 </style>
 </head>
 <body>
@@ -264,7 +271,10 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;
         </label>
         <label style="margin-top:12px;display:block;">
           <span class="lbl">Von</span>
-          <select id="from-cur" onchange="convert()"></select>
+          <div class="select-wrapper">
+            <span class="cur-flag" id="from-flag">🇪🇺</span>
+            <select id="from-cur" onchange="updateFlags(); convert()"></select>
+          </div>
         </label>
       </div>
 
@@ -275,11 +285,14 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;
       <div>
         <label>
           <span class="lbl">Ergebnis</span>
-          <input type="text" id="amount-out" readonly style="background:var(--surface);cursor:default;color:var(--accent);">
+          <input type="text" id="amount-out" style="color:var(--accent);" oninput="onAmountOutInput()" onblur="formatAmountOutBlur()" onfocus="formatAmountOutFocus()">
         </label>
         <label style="margin-top:12px;display:block;">
           <span class="lbl">Nach</span>
-          <select id="to-cur" onchange="convert()"></select>
+          <div class="select-wrapper">
+            <span class="cur-flag" id="to-flag">🇨🇭</span>
+            <select id="to-cur" onchange="updateFlags(); convert()"></select>
+          </div>
         </label>
       </div>
     </div>
@@ -391,6 +404,8 @@ const CURRENCY_META = {
 let rates = {}; // alle gegen EUR
 let rateDate = '';
 let rawAmount = 1;
+let rawAmountOut = 0;
+let lastEdited = 'in'; // 'in' oder 'out'
 
 /* ─── ECB-Kurse laden (mit localStorage-Cache) ──────────────── */
 const CACHE_KEY = 'wechselkurse_cache';
@@ -498,6 +513,15 @@ function buildSelects() {
 
   from.value = 'EUR';
   to.value   = 'CHF';
+  updateFlags();
+}
+
+/* ─── Flag-Anzeige aktualisieren ────────────────────────────── */
+function updateFlags() {
+  const fromCode = document.getElementById('from-cur').value;
+  const toCode   = document.getElementById('to-cur').value;
+  document.getElementById('from-flag').textContent = (CURRENCY_META[fromCode] || {flag:'🏳'}).flag;
+  document.getElementById('to-flag').textContent   = (CURRENCY_META[toCode]   || {flag:'🏳'}).flag;
 }
 
 /* ─── Kurstabelle ───────────────────────────────────────────── */
@@ -517,23 +541,8 @@ function buildRatesTable() {
   }).join('');
 }
 
-/* ─── Umrechnung ────────────────────────────────────────────── */
-function convert() {
-  const from = document.getElementById('from-cur').value;
-  const to   = document.getElementById('to-cur').value;
-  if (!rates[from] || !rates[to]) return;
-
-  const rateFrom = rates[from]; // EUR→FROM
-  const rateTo   = rates[to];   // EUR→TO
-  const rateNet  = rateTo / rateFrom; // FROM→TO
-
-  const result = rawAmount * rateNet;
-
-  // Dezimalstellen dynamisch
-  const dec = result < 1 ? 5 : result < 100 ? 4 : 2;
-  document.getElementById('amount-out').value = result.toLocaleString('de-DE',{minimumFractionDigits:dec,maximumFractionDigits:dec});
-
-  // Kursdetail
+/* ─── Kursdetail anzeigen ───────────────────────────────────── */
+function showRateDetail(from, to, rateNet) {
   document.getElementById('result-detail').style.display = 'block';
   const r1dec = rateNet < 1 ? 6 : rateNet < 100 ? 4 : 2;
   const r2dec = (1/rateNet) < 1 ? 6 : (1/rateNet) < 100 ? 4 : 2;
@@ -543,11 +552,45 @@ function convert() {
     `1 ${to} = ${(1/rateNet).toLocaleString('de-DE',{minimumFractionDigits:r2dec,maximumFractionDigits:r2dec})} ${from}`;
 }
 
+/* ─── Umrechnung: links → rechts ────────────────────────────── */
+function convertLeft() {
+  const from = document.getElementById('from-cur').value;
+  const to   = document.getElementById('to-cur').value;
+  if (!rates[from] || !rates[to]) return;
+  const rateNet = rates[to] / rates[from];
+  const result  = rawAmount * rateNet;
+  rawAmountOut  = result;
+  const dec = result < 1 ? 5 : result < 100 ? 4 : 2;
+  document.getElementById('amount-out').value =
+    result.toLocaleString('de-DE',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  showRateDetail(from, to, rateNet);
+}
+
+/* ─── Umrechnung: rechts → links ────────────────────────────── */
+function convertRight() {
+  const from = document.getElementById('from-cur').value;
+  const to   = document.getElementById('to-cur').value;
+  if (!rates[from] || !rates[to]) return;
+  const rateNet = rates[to] / rates[from];
+  const result  = rawAmountOut / rateNet;
+  rawAmount     = result;
+  const dec = result < 1 ? 5 : result < 100 ? 4 : 2;
+  document.getElementById('amount-in').value =
+    result.toLocaleString('de-DE',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  showRateDetail(from, to, rateNet);
+}
+
+function convert() {
+  if (lastEdited === 'out') convertRight();
+  else convertLeft();
+}
+
 /* ─── Input-Formatierung ────────────────────────────────────── */
 function onAmountInput() {
+  lastEdited = 'in';
   const raw = document.getElementById('amount-in').value.replace(/\./g,'').replace(',','.');
   const n = parseFloat(raw);
-  if (!isNaN(n)) { rawAmount = n; convert(); }
+  if (!isNaN(n)) { rawAmount = n; convertLeft(); }
 }
 function formatAmountBlur() {
   const el = document.getElementById('amount-in');
@@ -556,7 +599,7 @@ function formatAmountBlur() {
   if (!isNaN(n)) {
     rawAmount = n;
     el.value = n.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:2});
-    convert();
+    convertLeft();
   }
 }
 function formatAmountFocus() {
@@ -564,10 +607,32 @@ function formatAmountFocus() {
   el.value = rawAmount.toString().replace('.',',');
 }
 
+function onAmountOutInput() {
+  lastEdited = 'out';
+  const raw = document.getElementById('amount-out').value.replace(/\./g,'').replace(',','.');
+  const n = parseFloat(raw);
+  if (!isNaN(n)) { rawAmountOut = n; convertRight(); }
+}
+function formatAmountOutBlur() {
+  const el = document.getElementById('amount-out');
+  const raw = el.value.replace(/\./g,'').replace(',','.');
+  const n = parseFloat(raw);
+  if (!isNaN(n)) {
+    rawAmountOut = n;
+    el.value = n.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:2});
+    convertRight();
+  }
+}
+function formatAmountOutFocus() {
+  const el = document.getElementById('amount-out');
+  el.value = rawAmountOut.toString().replace('.',',');
+}
+
 function setAmount(n) {
+  lastEdited = 'in';
   rawAmount = n;
   document.getElementById('amount-in').value = n.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0});
-  convert();
+  convertLeft();
 }
 
 function swapCurrencies() {
@@ -576,6 +641,7 @@ function swapCurrencies() {
   const tmp  = from.value;
   from.value = to.value;
   to.value   = tmp;
+  updateFlags();
   convert();
 }
 
