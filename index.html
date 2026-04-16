@@ -505,7 +505,7 @@ function buildSelects() {
       const m = CURRENCY_META[code] || {name:code, flag:'🏳'};
       const opt = document.createElement('option');
       opt.value = code;
-      opt.textContent = m.flag + '  ' + code + ' – ' + m.name;
+      opt.textContent = code + ' – ' + m.name;
       sel.appendChild(opt);
     });
     if (cur && rates[cur]) sel.value = cur;
