@@ -224,6 +224,17 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;
 }
 
 .select-wrapper{position:relative;}
+
+.hist-period-btn{
+  background:var(--surface2);border:1px solid var(--border);
+  font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--text-muted);padding:7px 16px;
+  cursor:pointer;transition:all .2s;
+}
+.hist-period-btn+.hist-period-btn{margin-left:-1px;}
+.hist-period-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+.hist-period-btn:hover:not(.active){color:var(--accent);border-color:var(--accent);}
+
 .cur-flag{
   position:absolute;left:10px;top:50%;transform:translateY(-50%);
   font-size:16px;pointer-events:none;z-index:1;line-height:1;
@@ -290,7 +301,7 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;
         <label style="margin-top:12px;display:block;">
           <span class="lbl">Nach</span>
           <div class="select-wrapper">
-            <span class="cur-flag" id="to-flag">🇨🇭</span>
+            <span class="cur-flag" id="to-flag">🇺🇸</span>
             <select id="to-cur" onchange="updateFlags(); convert()"></select>
           </div>
         </label>
@@ -336,6 +347,33 @@ select{cursor:pointer;appearance:none;-webkit-appearance:none;
       </table>
     </div>
     <p class="note">Kurse: Europäische Zentralbank (EZB) · Referenzkurse gegen EUR · Täglich ~16:00 Uhr MEZ</p>
+  </div>
+
+  <!-- Historische Referenzkurse -->
+  <div class="card">
+    <div class="card-title">Historische Referenzkurse <span style="font-size:9px;color:var(--text-muted);">EZB-Durchschnitte</span></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+      <div class="select-wrapper" style="flex:1;min-width:180px;">
+        <span class="cur-flag" id="hist-cur-flag">🇺🇸</span>
+        <select id="hist-cur"></select>
+      </div>
+      <div>
+        <button class="hist-period-btn active" id="hist-btn-A" onclick="setHistPeriod('A')">Jahreskurse</button><button class="hist-period-btn" id="hist-btn-M" onclick="setHistPeriod('M')">Monatskurse</button>
+      </div>
+    </div>
+    <div id="hist-status" style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;margin-bottom:8px;min-height:14px;"></div>
+    <table class="rates-table">
+      <thead>
+        <tr>
+          <th id="hist-th-period">Jahr</th>
+          <th style="text-align:right;">1 EUR =</th>
+        </tr>
+      </thead>
+      <tbody id="hist-body">
+        <tr><td colspan="2" style="color:var(--text-muted);padding:20px 0;">Wird geladen …</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Quelle: Europäische Zentralbank (EZB) · Jahres- und Monatsdurchschnittskurse</p>
   </div>
 
   <p class="disclaimer">Alle Wechselkurse basieren auf den täglich veröffentlichten Referenzkursen der Europäischen Zentralbank (EZB). Die Kurse dienen zur Orientierung und können von Handels- oder Bankenkursen abweichen. Alle Angaben ohne Gewähr.</p>
@@ -512,7 +550,7 @@ function buildSelects() {
   });
 
   from.value = 'EUR';
-  to.value   = 'CHF';
+  to.value   = 'USD';
   updateFlags();
 }
 
@@ -645,7 +683,79 @@ function swapCurrencies() {
   convert();
 }
 
+/* ─── Historische Kurse (EZB SDW) ───────────────────────────── */
+let histPeriod = 'A';
+
+function buildHistSelect() {
+  const sel = document.getElementById('hist-cur');
+  if (sel.options.length > 0) return;
+  Object.keys(CURRENCY_META).filter(c => c !== 'EUR').forEach(code => {
+    const opt = document.createElement('option');
+    opt.value = code;
+    opt.textContent = code + ' – ' + CURRENCY_META[code].name;
+    sel.appendChild(opt);
+  });
+  sel.value = 'USD';
+  sel.addEventListener('change', function() {
+    const m = CURRENCY_META[sel.value] || {flag:'🏳'};
+    document.getElementById('hist-cur-flag').textContent = m.flag;
+    loadHistRates();
+  });
+  loadHistRates();
+}
+
+function setHistPeriod(p) {
+  histPeriod = p;
+  document.getElementById('hist-btn-A').classList.toggle('active', p === 'A');
+  document.getElementById('hist-btn-M').classList.toggle('active', p === 'M');
+  document.getElementById('hist-th-period').textContent = p === 'A' ? 'Jahr' : 'Monat';
+  loadHistRates();
+}
+
+async function loadHistRates() {
+  const cur = document.getElementById('hist-cur').value;
+  const tbody = document.getElementById('hist-body');
+  const statusEl = document.getElementById('hist-status');
+  tbody.innerHTML = '<tr><td colspan="2" style="color:var(--text-muted);padding:20px 0;">Wird geladen …</td></tr>';
+  statusEl.textContent = '';
+
+  let startPeriod;
+  if (histPeriod === 'A') {
+    startPeriod = '1999';
+  } else {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 36);
+    startPeriod = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  const url = 'https://data-api.ecb.europa.eu/service/data/EXR/' +
+    histPeriod + '.' + cur + '.EUR.SP00.A?format=jsondata&startPeriod=' + startPeriod;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const periods = data.structure.dimensions.observation[0].values.map(v => v.id);
+    const seriesObs = Object.values(data.dataSets[0].series)[0].observations;
+    const rows = periods.map((p, i) => {
+      const obs = seriesObs[String(i)];
+      return obs ? {period: p, rate: obs[0]} : null;
+    }).filter(Boolean).reverse();
+    if (rows.length === 0) throw new Error('Keine Daten');
+    tbody.innerHTML = rows.map(r => {
+      const dec = r.rate < 10 ? 4 : r.rate < 100 ? 3 : r.rate < 10000 ? 2 : 0;
+      return '<tr><td>' + r.period + '</td><td style="text-align:right;color:var(--accent)">' +
+        r.rate.toLocaleString('de-DE', {minimumFractionDigits:dec, maximumFractionDigits:dec}) +
+        ' ' + cur + '</td></tr>';
+    }).join('');
+    statusEl.textContent = 'EZB-Durchschnittskurse · ' + rows.length + ' Einträge';
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="2" style="color:var(--text-muted);padding:20px 0;">Keine Daten verfügbar für ' + cur + '</td></tr>';
+  }
+}
+
 /* ─── Init ──────────────────────────────────────────────────── */
+buildHistSelect();
 loadRates();
 // Alle 30 Min automatisch aktualisieren
 setInterval(loadRates, 30 * 60 * 1000);
